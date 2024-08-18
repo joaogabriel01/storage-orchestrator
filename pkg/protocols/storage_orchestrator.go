@@ -28,6 +28,8 @@ type StorageOrchestrator[K any, V any] interface {
 
 type SaveOptionsFunc func(*SaveOptions)
 
+type GetOptionsFunc func(*GetOptions)
+
 type OptionsFunc func(*Options)
 
 type SaveOptions struct {

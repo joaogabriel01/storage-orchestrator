@@ -197,4 +197,35 @@ func TestOrchestrator(t *testing.T) {
 		assert.ElementsMatch(t, saved, []string{})
 
 	})
+
+	t.Run("it receives an error when trying to get a Cache item without passing order", func(t *testing.T) {
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		_, err := orchestrator.Get("caughtTest")
+
+		assert.Errorf(t, err, "unspecified order")
+
+	})
+
+	t.Run("it receives a valid value from the first unit when passed order and is of cache type", func(t *testing.T) {
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		expectedValue := "worked"
+		mock1.On("Get", "caughtTest", mock.Anything).Return(expectedValue, nil)
+
+		value, err := orchestrator.Get("caughtTest", func(opts *protocols.GetOptions) {
+			opts.Targets = []string{"mock1", "mock2"}
+		})
+
+		assert.Equal(t, expectedValue, value)
+		assert.NoError(t, err)
+	})
 }
