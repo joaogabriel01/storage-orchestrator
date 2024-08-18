@@ -10,19 +10,20 @@ const (
 )
 
 type StorageOrchestrator[K any, V any] interface {
-	Save(item V, opt ...Options) error
-	Get(query K, opt ...Options) (V, error)
-	Delete(query K, opt ...Options) error
-	Sync(from string, to []string, opt ...Options) error
+	Save(item V, opt ...OptionsFunc) ([]string, error)
+	Get(query K, opt ...OptionsFunc) (V, error)
+	Delete(query K, opt ...OptionsFunc) error
+	Sync(from string, to []string, opt ...OptionsFunc) error
 
 	AddUnit(storage StorageUnit[K, V], storageName string) error
 	GetUnits() (map[string]StorageUnit[K, V], error)
 	GetUnit(string) (StorageUnit[K, V], error)
 }
 
-type Options interface {
-	GetTypeOrchestrator() uint
-	GetContext() context.Context
+type OptionsFunc func(*Options)
+
+type Options struct {
+	Context context.Context
 }
 
 type StorageUnit[K any, V any] interface {
