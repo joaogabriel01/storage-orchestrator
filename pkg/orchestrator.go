@@ -8,11 +8,17 @@ import (
 	"github.com/joaogabriel01/storage-orchestrator/pkg/protocols"
 )
 
-func defaultSaveOptions() protocols.SaveOptions {
+func (o *Orchestrator[K, V]) defaultSaveOptions() protocols.SaveOptions {
 	ctx := context.Background()
+
+	targets := make([]string, 0, len(o.units))
+	for key := range o.units {
+		targets = append(targets, key)
+	}
 	options := protocols.SaveOptions{
 		Context:       ctx,
 		HowWillItSave: protocols.Sequential,
+		Targets:       targets,
 	}
 	return options
 }
@@ -24,7 +30,7 @@ type Orchestrator[K any, V any] struct {
 }
 
 func (o *Orchestrator[K, V]) Save(item V, opts ...protocols.SaveOptionsFunc) ([]string, error) {
-	opt := defaultSaveOptions()
+	opt := o.defaultSaveOptions()
 
 	for _, fn := range opts {
 		fn(&opt)
@@ -36,16 +42,16 @@ func (o *Orchestrator[K, V]) Save(item V, opts ...protocols.SaveOptionsFunc) ([]
 	// i dont't see other ways of insertion so I didn't use polymorphism
 	switch {
 	case opt.HowWillItSave == protocols.Parallel:
-		saved, err = o.saveInParallel(item, opt.Context)
+		saved, err = o.saveInParallel(item, opt.Targets, opt.Context)
 	case opt.HowWillItSave == protocols.Sequential:
-		saved, err = o.saveInSequence(item, opt.Context)
+		saved, err = o.saveInSequence(item, opt.Targets, opt.Context)
 	}
 
 	return saved, err
 
 }
 
-func (o *Orchestrator[K, V]) saveInParallel(item V, ctx context.Context) ([]string, error) {
+func (o *Orchestrator[K, V]) saveInParallel(item V, targets []string, ctx context.Context) ([]string, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -54,7 +60,7 @@ func (o *Orchestrator[K, V]) saveInParallel(item V, ctx context.Context) ([]stri
 	saved := make([]string, 0, len(o.units))
 	errCh := make(chan error, len(o.units))
 
-	for key, unit := range o.units {
+	for _, key := range targets {
 		wg.Add(1)
 
 		go func(key string, unit protocols.StorageUnit[K, V]) {
@@ -74,7 +80,7 @@ func (o *Orchestrator[K, V]) saveInParallel(item V, ctx context.Context) ([]stri
 			mu.Lock()
 			saved = append(saved, key)
 			mu.Unlock()
-		}(key, unit)
+		}(key, o.units[key])
 	}
 
 	wg.Wait()
@@ -89,17 +95,17 @@ func (o *Orchestrator[K, V]) saveInParallel(item V, ctx context.Context) ([]stri
 	return saved, nil
 }
 
-func (o *Orchestrator[K, V]) saveInSequence(item V, ctx context.Context) ([]string, error) {
+func (o *Orchestrator[K, V]) saveInSequence(item V, targets []string, ctx context.Context) ([]string, error) {
 	saved := make([]string, 0, len(o.units))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	for key, unit := range o.units {
+	for _, key := range targets {
 
 		if ctx.Err() != nil {
 			return saved, ctx.Err()
 		}
-
+		unit := o.units[key]
 		err := unit.Save(item, ctx)
 		if err != nil {
 			cancel()

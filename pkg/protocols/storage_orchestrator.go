@@ -33,11 +33,13 @@ type OptionsFunc func(*Options)
 type SaveOptions struct {
 	Context       context.Context
 	HowWillItSave TypeSaveOptions
+	Targets       []string
 }
 
 type GetOptions struct {
 	Context      context.Context
 	HowWillItGet TypeGetOptions
+	Targets      []string
 }
 
 type Options struct {
