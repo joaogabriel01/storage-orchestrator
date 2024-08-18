@@ -16,7 +16,7 @@ const (
 )
 
 type StorageOrchestrator[K any, V any] interface {
-	Save(item V, opt ...OptionsFunc) ([]string, error)
+	Save(item V, opt ...SaveOptionsFunc) ([]string, error)
 	Get(query K, opt ...OptionsFunc) (V, error)
 	Delete(query K, opt ...OptionsFunc) error
 	Sync(from string, to []string, opt ...OptionsFunc) error
