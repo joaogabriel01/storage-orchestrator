@@ -36,7 +36,7 @@ func TestOrchestrator(t *testing.T) {
 		assert.Equal(t, nil, mockNotFound)
 
 	})
-	t.Run("it saves an item with success", func(t *testing.T) {
+	t.Run("it saves an item with success - sequential mode", func(t *testing.T) {
 		mock1 := test.NewUnitMock()
 		mock2 := test.NewUnitMock()
 
@@ -53,7 +53,26 @@ func TestOrchestrator(t *testing.T) {
 		mock1.AssertExpectations(t)
 	})
 
-	t.Run("it saves an item with unit error", func(t *testing.T) {
+	t.Run("it saves an item with success - parallel mode", func(t *testing.T) {
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		mock1.On("Save", "saved", mock.Anything).Return(nil)
+		mock2.On("Save", "saved", mock.Anything).Return(nil)
+
+		saved, err := orchestrator.Save("saved", func(opts *protocols.SaveOptions) {
+			opts.HowWillItSave = uint(protocols.Parallel)
+		})
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, saved, []string{"mock1", "mock2"})
+
+		mock1.AssertExpectations(t)
+	})
+
+	t.Run("it saves an item with unit error - sequential mode", func(t *testing.T) {
 		mock1 := test.NewUnitMock()
 		mock2 := test.NewUnitMock()
 
@@ -64,7 +83,32 @@ func TestOrchestrator(t *testing.T) {
 		mock1.On("Save", "saved", mock.Anything).Return(expectedErr)
 		mock2.On("Save", "saved", mock.Anything).Return(nil)
 
-		saved, err := orchestrator.Save("saved")
+		saved, err := orchestrator.Save("saved", func(opts *protocols.SaveOptions) {
+			opts.HowWillItSave = uint(protocols.Sequential)
+		})
+
+		assert.ErrorIs(t, err, expectedErr)
+
+		assert.ElementsMatch(t, saved, []string{})
+
+		mock1.AssertExpectations(t)
+	})
+
+	t.Run("it saves an item with unit error - parallel mode", func(t *testing.T) {
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		expectedErr := errors.New("unit1 error")
+		mock1.On("Save", "saved", mock.Anything).Return(expectedErr)
+		mock2.On("Save", "saved", mock.Anything).Return(nil)
+
+		saved, err := orchestrator.Save("saved", func(opts *protocols.SaveOptions) {
+			opts.HowWillItSave = uint(protocols.Parallel)
+		})
+
 		assert.ErrorIs(t, err, expectedErr)
 
 		assert.ElementsMatch(t, saved, []string{"mock2"})
@@ -72,17 +116,38 @@ func TestOrchestrator(t *testing.T) {
 		mock1.AssertExpectations(t)
 	})
 
-	t.Run("it saves an item with context error", func(t *testing.T) {
+	t.Run("it saves an item with context error - sequential mode", func(t *testing.T) {
 		mock1 := test.NewUnitMock()
 		mock2 := test.NewUnitMock()
 
 		orchestrator.AddUnit("mock1", mock1)
 		orchestrator.AddUnit("mock2", mock2)
 
-		saved, err := orchestrator.Save("saved", func(opts *protocols.Options) {
+		saved, err := orchestrator.Save("saved", func(opts *protocols.SaveOptions) {
 			ctx, cancel := context.WithCancel(context.Background())
 			opts.Context = ctx
 			cancel()
+		})
+
+		assert.ErrorIs(t, err, context.Canceled)
+
+		assert.ElementsMatch(t, saved, []string{})
+
+	})
+
+	t.Run("it saves an item with context error - parallel mode", func(t *testing.T) {
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		saved, err := orchestrator.Save("saved", func(opts *protocols.SaveOptions) {
+			ctx, cancel := context.WithCancel(context.Background())
+			opts.Context = ctx
+			cancel()
+
+			opts.HowWillItSave = uint(protocols.Parallel)
 		})
 
 		assert.ErrorIs(t, err, context.Canceled)

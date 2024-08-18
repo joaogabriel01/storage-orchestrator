@@ -8,10 +8,11 @@ import (
 	"github.com/joaogabriel01/storage-orchestrator/pkg/protocols"
 )
 
-func defaultOptions() protocols.Options {
+func defaultSaveOptions() protocols.SaveOptions {
 	ctx := context.Background()
-	options := protocols.Options{
-		Context: ctx,
+	options := protocols.SaveOptions{
+		Context:       ctx,
+		HowWillItSave: uint(protocols.Sequential),
 	}
 	return options
 }
@@ -22,14 +23,30 @@ type Orchestrator[K any, V any] struct {
 	typeOrchestrator uint
 }
 
-func (o *Orchestrator[K, V]) Save(item V, opts ...protocols.OptionsFunc) ([]string, error) {
-	opt := defaultOptions()
+func (o *Orchestrator[K, V]) Save(item V, opts ...protocols.SaveOptionsFunc) ([]string, error) {
+	opt := defaultSaveOptions()
 
 	for _, fn := range opts {
 		fn(&opt)
 	}
 
-	ctx, cancel := context.WithCancel(opt.Context)
+	var saved []string
+	var err error
+
+	// i dont't see other ways of insertion so I didn't use polymorphism
+	switch {
+	case opt.HowWillItSave == uint(protocols.Parallel):
+		saved, err = o.saveInParallel(item, opt.Context)
+	case opt.HowWillItSave == uint(protocols.Sequential):
+		saved, err = o.saveInSequence(item, opt.Context)
+	}
+
+	return saved, err
+
+}
+
+func (o *Orchestrator[K, V]) saveInParallel(item V, ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	var wg sync.WaitGroup
@@ -69,6 +86,27 @@ func (o *Orchestrator[K, V]) Save(item V, opts ...protocols.OptionsFunc) ([]stri
 		}
 	}
 
+	return saved, nil
+}
+
+func (o *Orchestrator[K, V]) saveInSequence(item V, ctx context.Context) ([]string, error) {
+	saved := make([]string, 0, len(o.units))
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	for key, unit := range o.units {
+
+		if ctx.Err() != nil {
+			return saved, ctx.Err()
+		}
+
+		err := unit.Save(item, ctx)
+		if err != nil {
+			cancel()
+			return saved, err
+		}
+		saved = append(saved, key)
+	}
 	return saved, nil
 }
 

@@ -2,10 +2,16 @@ package protocols
 
 import "context"
 
-type typeOrchestrator uint
+type typeGetOptions uint
+type typeSaveOptions uint
 
 const (
-	Cache typeOrchestrator = iota
+	Sequential typeSaveOptions = iota
+	Parallel
+)
+
+const (
+	Cache typeGetOptions = iota
 	Race
 )
 
@@ -20,7 +26,14 @@ type StorageOrchestrator[K any, V any] interface {
 	GetUnit(string) (StorageUnit[K, V], error)
 }
 
+type SaveOptionsFunc func(*SaveOptions)
+
 type OptionsFunc func(*Options)
+
+type SaveOptions struct {
+	Context       context.Context
+	HowWillItSave uint
+}
 
 type Options struct {
 	Context context.Context
