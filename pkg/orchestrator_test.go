@@ -12,7 +12,7 @@ import (
 )
 
 func TestOrchestrator(t *testing.T) {
-	orchestrator := NewOrchestrator[string, string](map[string]protocols.StorageUnit[string, string]{}, uint(protocols.Cache))
+	orchestrator := NewOrchestrator[string, string](map[string]protocols.StorageUnit[string, string]{})
 
 	t.Run("it makes the storage unit operations", func(t *testing.T) {
 		mock1 := test.NewUnitMock()

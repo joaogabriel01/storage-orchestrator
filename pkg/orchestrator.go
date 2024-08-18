@@ -8,36 +8,9 @@ import (
 	"github.com/joaogabriel01/storage-orchestrator/pkg/protocols"
 )
 
-func (o *Orchestrator[K, V]) defaultSaveOptions() protocols.SaveOptions {
-	ctx := context.Background()
-
-	targets := make([]string, 0, len(o.units))
-	for key := range o.units {
-		targets = append(targets, key)
-	}
-	options := protocols.SaveOptions{
-		Context:       ctx,
-		HowWillItSave: protocols.Sequential,
-		Targets:       targets,
-	}
-	return options
-}
-
-func (o *Orchestrator[K, V]) defaultGetOptions() protocols.GetOptions {
-	ctx := context.Background()
-
-	options := protocols.GetOptions{
-		Context:      ctx,
-		HowWillItGet: protocols.Cache,
-		Targets:      []string{},
-	}
-	return options
-}
-
 type Orchestrator[K any, V any] struct {
-	mu               sync.RWMutex
-	units            map[string]protocols.StorageUnit[K, V]
-	typeOrchestrator uint
+	mu    sync.RWMutex
+	units map[string]protocols.StorageUnit[K, V]
 }
 
 func (o *Orchestrator[K, V]) Save(item V, opts ...protocols.SaveOptionsFunc) ([]string, error) {
@@ -201,9 +174,34 @@ func (o *Orchestrator[K, V]) GetUnit(unitName string) (protocols.StorageUnit[K, 
 	return unit, nil
 }
 
-func NewOrchestrator[K any, V any](units map[string]protocols.StorageUnit[K, V], typeOrchestrator uint) Orchestrator[K, V] {
+func (o *Orchestrator[K, V]) defaultSaveOptions() protocols.SaveOptions {
+	ctx := context.Background()
+
+	targets := make([]string, 0, len(o.units))
+	for key := range o.units {
+		targets = append(targets, key)
+	}
+	options := protocols.SaveOptions{
+		Context:       ctx,
+		HowWillItSave: protocols.Sequential,
+		Targets:       targets,
+	}
+	return options
+}
+
+func (o *Orchestrator[K, V]) defaultGetOptions() protocols.GetOptions {
+	ctx := context.Background()
+
+	options := protocols.GetOptions{
+		Context:      ctx,
+		HowWillItGet: protocols.Cache,
+		Targets:      []string{},
+	}
+	return options
+}
+
+func NewOrchestrator[K any, V any](units map[string]protocols.StorageUnit[K, V]) Orchestrator[K, V] {
 	return Orchestrator[K, V]{
-		units:            units,
-		typeOrchestrator: typeOrchestrator,
+		units: units,
 	}
 }
