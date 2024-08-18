@@ -64,7 +64,7 @@ func TestOrchestrator(t *testing.T) {
 		mock2.On("Save", "saved", mock.Anything).Return(nil)
 
 		saved, err := orchestrator.Save("saved", func(opts *protocols.SaveOptions) {
-			opts.HowWillItSave = uint(protocols.Parallel)
+			opts.HowWillItSave = protocols.Parallel
 		})
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, saved, []string{"mock1", "mock2"})
@@ -84,7 +84,7 @@ func TestOrchestrator(t *testing.T) {
 		mock2.On("Save", "saved", mock.Anything).Return(nil)
 
 		saved, err := orchestrator.Save("saved", func(opts *protocols.SaveOptions) {
-			opts.HowWillItSave = uint(protocols.Sequential)
+			opts.HowWillItSave = protocols.Sequential
 		})
 
 		assert.ErrorIs(t, err, expectedErr)
@@ -106,7 +106,7 @@ func TestOrchestrator(t *testing.T) {
 		mock2.On("Save", "saved", mock.Anything).Return(nil)
 
 		saved, err := orchestrator.Save("saved", func(opts *protocols.SaveOptions) {
-			opts.HowWillItSave = uint(protocols.Parallel)
+			opts.HowWillItSave = protocols.Parallel
 		})
 
 		assert.ErrorIs(t, err, expectedErr)
@@ -147,7 +147,7 @@ func TestOrchestrator(t *testing.T) {
 			opts.Context = ctx
 			cancel()
 
-			opts.HowWillItSave = uint(protocols.Parallel)
+			opts.HowWillItSave = protocols.Parallel
 		})
 
 		assert.ErrorIs(t, err, context.Canceled)

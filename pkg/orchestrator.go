@@ -12,7 +12,7 @@ func defaultSaveOptions() protocols.SaveOptions {
 	ctx := context.Background()
 	options := protocols.SaveOptions{
 		Context:       ctx,
-		HowWillItSave: uint(protocols.Sequential),
+		HowWillItSave: protocols.Sequential,
 	}
 	return options
 }
@@ -35,9 +35,9 @@ func (o *Orchestrator[K, V]) Save(item V, opts ...protocols.SaveOptionsFunc) ([]
 
 	// i dont't see other ways of insertion so I didn't use polymorphism
 	switch {
-	case opt.HowWillItSave == uint(protocols.Parallel):
+	case opt.HowWillItSave == protocols.Parallel:
 		saved, err = o.saveInParallel(item, opt.Context)
-	case opt.HowWillItSave == uint(protocols.Sequential):
+	case opt.HowWillItSave == protocols.Sequential:
 		saved, err = o.saveInSequence(item, opt.Context)
 	}
 

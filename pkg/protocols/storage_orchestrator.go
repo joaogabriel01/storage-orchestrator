@@ -2,16 +2,16 @@ package protocols
 
 import "context"
 
-type typeGetOptions uint
-type typeSaveOptions uint
+type TypeGetOptions uint
+type TypeSaveOptions uint
 
 const (
-	Sequential typeSaveOptions = iota
+	Sequential TypeSaveOptions = iota
 	Parallel
 )
 
 const (
-	Cache typeGetOptions = iota
+	Cache TypeGetOptions = iota
 	Race
 )
 
@@ -32,7 +32,12 @@ type OptionsFunc func(*Options)
 
 type SaveOptions struct {
 	Context       context.Context
-	HowWillItSave uint
+	HowWillItSave TypeSaveOptions
+}
+
+type GetOptions struct {
+	Context      context.Context
+	HowWillItGet TypeGetOptions
 }
 
 type Options struct {
