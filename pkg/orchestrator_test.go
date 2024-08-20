@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestOrchestrator(t *testing.T) {
+func TestOrchestratorUnitOperations(t *testing.T) {
 	orchestrator := NewOrchestrator[string, string](map[string]protocols.StorageUnit[string, string]{})
 
 	t.Run("it makes the storage unit operations", func(t *testing.T) {
@@ -36,6 +36,11 @@ func TestOrchestrator(t *testing.T) {
 		assert.Equal(t, nil, mockNotFound)
 
 	})
+}
+
+func TestOrchestradorSave(t *testing.T) {
+	orchestrator := NewOrchestrator[string, string](map[string]protocols.StorageUnit[string, string]{})
+
 	t.Run("it saves an item with success - sequential mode", func(t *testing.T) {
 		mock1 := test.NewUnitMock()
 		mock2 := test.NewUnitMock()
@@ -197,6 +202,11 @@ func TestOrchestrator(t *testing.T) {
 		assert.ElementsMatch(t, saved, []string{})
 
 	})
+
+}
+
+func TestOrchestratorGet(t *testing.T) {
+	orchestrator := NewOrchestrator[string, string](map[string]protocols.StorageUnit[string, string]{})
 
 	t.Run("it receives an error when trying to get a Cache item without passing order", func(t *testing.T) {
 		mock1 := test.NewUnitMock()
