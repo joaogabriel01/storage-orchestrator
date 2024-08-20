@@ -132,6 +132,10 @@ func TestOrchestradorSave(t *testing.T) {
 
 		saved, err := orchestrator.Save("saved", func(opts *protocols.SaveOptions) {
 			opts.HowWillItSave = protocols.Sequential
+			opts.Targets = []string{
+				"mock1",
+				"mock2",
+			}
 		})
 
 		assert.ErrorIs(t, err, expectedErr)
