@@ -3,6 +3,7 @@ package pkg
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/joaogabriel01/storage-orchestrator/pkg/protocols"
@@ -241,5 +242,31 @@ func TestOrchestratorGet(t *testing.T) {
 
 		assert.Equal(t, expectedValue, value)
 		assert.NoError(t, err)
+
+		mock1.AssertExpectations(t)
+	})
+
+	t.Run("it receives a valid value from the second unit when passed order and is of cache type", func(t *testing.T) {
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		expectedValue := "worked"
+		mock1.On("Save", "worked", mock.Anything).Return(nil)
+		mock1.On("Get", "caughtTest", mock.Anything).Return("", fmt.Errorf("value not found"))
+
+		mock2.On("Get", "caughtTest", mock.Anything).Return(expectedValue, nil)
+
+		value, err := orchestrator.Get("caughtTest", func(opts *protocols.GetOptions) {
+			opts.Targets = []string{"mock1", "mock2"}
+		})
+
+		assert.Equal(t, expectedValue, value)
+		assert.NoError(t, err)
+
+		mock1.AssertExpectations(t)
+		mock2.AssertExpectations(t)
 	})
 }

@@ -103,6 +103,7 @@ func (o *Orchestrator[K, V]) saveInSequence(item V, targets []string, ctx contex
 func (o *Orchestrator[K, V]) Get(query K, opts ...protocols.GetOptionsFunc) (V, error) {
 	opt := o.defaultGetOptions()
 	var object V
+	var err error
 	for _, fn := range opts {
 		fn(&opt)
 	}
@@ -112,11 +113,11 @@ func (o *Orchestrator[K, V]) Get(query K, opts ...protocols.GetOptionsFunc) (V, 
 		if len(opt.Targets) < 1 {
 			return object, fmt.Errorf("unspecified order")
 		}
-		return o.getInCache(query, opt.Targets, opt.Context)
+		object, err = o.getInCache(query, opt.Targets, opt.Context)
 	case opt.HowWillItGet == protocols.Race:
 	}
 
-	return object, nil
+	return object, err
 }
 
 func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Context) (V, error) {
@@ -126,23 +127,28 @@ func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Co
 
 	defer func() {
 		if len(notExistIn) == len(orders) {
+			err = fmt.Errorf("no unit returned")
 			return
 		}
-		o.Save(value, func(so *protocols.SaveOptions) {
-			so.Targets = notExistIn
-		})
+
+		if len(notExistIn) > 0 {
+			o.Save(value, func(so *protocols.SaveOptions) {
+				so.Targets = notExistIn
+			})
+		}
 		//TODO handle errors
 	}()
 
 	for _, order := range orders {
 		value, err = o.units[order].Get(query, ctx)
-		// if the element does not exist, it should return an error
-		if err != nil {
-			notExistIn = append(notExistIn, order)
+
+		if err == nil {
+			break
 		}
-		return value, nil
+		notExistIn = append(notExistIn, order)
 	}
-	return value, fmt.Errorf("no unit returned")
+
+	return value, err
 }
 
 func (o *Orchestrator[K, V]) AddUnit(storageName string, storage protocols.StorageUnit[K, V]) error {
