@@ -15,8 +15,8 @@ func NewUnitMock() *UnitMock {
 	return &UnitMock{}
 }
 
-func (u *UnitMock) Save(item string, ctx context.Context) error {
-	args := u.Called(item, ctx)
+func (u *UnitMock) Save(query string, item string, ctx context.Context) error {
+	args := u.Called(query, item, ctx)
 	return args.Error(0)
 }
 

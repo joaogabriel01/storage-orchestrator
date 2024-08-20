@@ -13,7 +13,7 @@ type Orchestrator[K any, V any] struct {
 	units map[string]protocols.StorageUnit[K, V]
 }
 
-func (o *Orchestrator[K, V]) Save(item V, opts ...protocols.SaveOptionsFunc) ([]string, error) {
+func (o *Orchestrator[K, V]) Save(query K, item V, opts ...protocols.SaveOptionsFunc) ([]string, error) {
 	opt := o.defaultSaveOptions()
 
 	for _, fn := range opts {
@@ -26,16 +26,16 @@ func (o *Orchestrator[K, V]) Save(item V, opts ...protocols.SaveOptionsFunc) ([]
 	// i dont't see other ways of insertion so I didn't use polymorphism
 	switch {
 	case opt.HowWillItSave == protocols.Parallel:
-		saved, err = o.saveInParallel(item, opt.Targets, opt.Context)
+		saved, err = o.saveInParallel(query, item, opt.Targets, opt.Context)
 	case opt.HowWillItSave == protocols.Sequential:
-		saved, err = o.saveInSequence(item, opt.Targets, opt.Context)
+		saved, err = o.saveInSequence(query, item, opt.Targets, opt.Context)
 	}
 
 	return saved, err
 
 }
 
-func (o *Orchestrator[K, V]) saveInParallel(item V, targets []string, ctx context.Context) ([]string, error) {
+func (o *Orchestrator[K, V]) saveInParallel(query K, item V, targets []string, ctx context.Context) ([]string, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -55,7 +55,7 @@ func (o *Orchestrator[K, V]) saveInParallel(item V, targets []string, ctx contex
 				return
 			}
 
-			if err := unit.Save(item, ctx); err != nil {
+			if err := unit.Save(query, item, ctx); err != nil {
 				cancel()
 				errCh <- err
 				return
@@ -79,7 +79,7 @@ func (o *Orchestrator[K, V]) saveInParallel(item V, targets []string, ctx contex
 	return saved, nil
 }
 
-func (o *Orchestrator[K, V]) saveInSequence(item V, targets []string, ctx context.Context) ([]string, error) {
+func (o *Orchestrator[K, V]) saveInSequence(query K, item V, targets []string, ctx context.Context) ([]string, error) {
 	saved := make([]string, 0, len(o.units))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -90,7 +90,7 @@ func (o *Orchestrator[K, V]) saveInSequence(item V, targets []string, ctx contex
 			return saved, ctx.Err()
 		}
 		unit := o.units[key]
-		err := unit.Save(item, ctx)
+		err := unit.Save(query, item, ctx)
 		if err != nil {
 			cancel()
 			return saved, err
@@ -132,7 +132,7 @@ func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Co
 		}
 
 		if len(notExistIn) > 0 {
-			o.Save(value, func(so *protocols.SaveOptions) {
+			o.Save(query, value, func(so *protocols.SaveOptions) {
 				so.Targets = notExistIn
 			})
 		}
