@@ -269,4 +269,29 @@ func TestOrchestratorGet(t *testing.T) {
 		mock1.AssertExpectations(t)
 		mock2.AssertExpectations(t)
 	})
+
+	t.Run("it doesn't execute the save method of the unit when none has data.", func(t *testing.T) {
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		expectedValue := ""
+		expectedErr := "no unit returned"
+
+		mock1.On("Get", "caughtTest", mock.Anything).Return("", fmt.Errorf("value not found"))
+
+		mock2.On("Get", "caughtTest", mock.Anything).Return("", fmt.Errorf("value not found"))
+
+		value, err := orchestrator.Get("caughtTest", func(opts *protocols.GetOptions) {
+			opts.Targets = []string{"mock1", "mock2"}
+		})
+
+		assert.Equal(t, expectedValue, value)
+		assert.ErrorContains(t, err, expectedErr)
+
+		mock1.AssertExpectations(t)
+		mock2.AssertExpectations(t)
+	})
 }

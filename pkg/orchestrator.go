@@ -120,10 +120,8 @@ func (o *Orchestrator[K, V]) Get(query K, opts ...protocols.GetOptionsFunc) (V, 
 	return object, err
 }
 
-func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Context) (V, error) {
+func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Context) (value V, err error) {
 	notExistIn := make([]string, 0)
-	var value V
-	var err error
 
 	defer func() {
 		if len(notExistIn) == len(orders) {
