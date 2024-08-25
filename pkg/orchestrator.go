@@ -120,33 +120,41 @@ func (o *Orchestrator[K, V]) Get(query K, opts ...protocols.GetOptionsFunc) (V, 
 	return object, err
 }
 
-func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Context) (value V, err error) {
+func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Context) (value V, returnErr error) {
 	notExistIn := make([]string, 0)
 
 	defer func() {
-		if len(notExistIn) == len(orders) {
-			err = fmt.Errorf("no unit returned")
-			return
-		}
-
-		if len(notExistIn) > 0 {
-			o.Save(query, value, func(so *protocols.SaveOptions) {
-				so.Targets = notExistIn
-			})
-		}
-		//TODO handle errors
+		returnErr = o.addMissingElements(query, value, orders, notExistIn)
 	}()
 
 	for _, order := range orders {
-		value, err = o.units[order].Get(query, ctx)
+		value, returnErr = o.units[order].Get(query, ctx)
 
-		if err == nil {
+		if returnErr == nil {
 			break
 		}
 		notExistIn = append(notExistIn, order)
 	}
 
-	return value, err
+	return value, returnErr
+}
+
+func (o *Orchestrator[K, V]) addMissingElements(query K, value V, orders []string, missing []string) error {
+	if len(missing) == len(orders) {
+		err := fmt.Errorf("no unit returned")
+		return err
+	}
+
+	if len(missing) > 0 {
+		_, err := o.Save(query, value, func(so *protocols.SaveOptions) {
+			so.Targets = missing
+		})
+		if err != nil {
+			return fmt.Errorf("err saving to units: %v ", err.Error())
+
+		}
+	}
+	return nil
 }
 
 func (o *Orchestrator[K, V]) AddUnit(storageName string, storage protocols.StorageUnit[K, V]) error {

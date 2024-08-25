@@ -270,7 +270,7 @@ func TestOrchestratorGet(t *testing.T) {
 		mock2.AssertExpectations(t)
 	})
 
-	t.Run("it doesn't execute the save method of the unit when none has data.", func(t *testing.T) {
+	t.Run("it doesn't execute the save method of the unit when none has data", func(t *testing.T) {
 		mock1 := test.NewUnitMock()
 		mock2 := test.NewUnitMock()
 
@@ -290,6 +290,29 @@ func TestOrchestratorGet(t *testing.T) {
 
 		assert.Equal(t, expectedValue, value)
 		assert.ErrorContains(t, err, expectedErr)
+
+		mock1.AssertExpectations(t)
+		mock2.AssertExpectations(t)
+	})
+
+	t.Run("should return an unit error when it doesn't have it in the first caches and it gives an error when saving", func(t *testing.T) {
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		mock1.On("Get", "caughtTest", mock.Anything).Return("", fmt.Errorf("value not found"))
+		mock1.On("Save", "caughtTest", "value", mock.Anything).Return(fmt.Errorf("didnt'save mock1"))
+
+		mock2.On("Get", "caughtTest", mock.Anything).Return("value", nil)
+
+		value, err := orchestrator.Get("caughtTest", func(opts *protocols.GetOptions) {
+			opts.Targets = []string{"mock1", "mock2"}
+		})
+
+		assert.Equal(t, "value", value)
+		assert.ErrorContains(t, err, "didnt'save mock1")
 
 		mock1.AssertExpectations(t)
 		mock2.AssertExpectations(t)
