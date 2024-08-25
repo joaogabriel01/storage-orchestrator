@@ -127,8 +127,7 @@ func TestOrchestradorSave(t *testing.T) {
 		orchestrator.AddUnit("mock1", mock1)
 		orchestrator.AddUnit("mock2", mock2)
 
-		expectedErr := errors.New("unit1 error")
-		mock1.On("Save", "query", "saved", mock.Anything).Return(expectedErr)
+		mock1.On("Save", "query", "saved", mock.Anything).Return(errors.New("unit1 error"))
 		mock2.On("Save", "query", "saved", mock.Anything).Return(nil)
 
 		saved, err := orchestrator.Save("query", "saved", func(opts *protocols.SaveOptions) {
@@ -139,7 +138,7 @@ func TestOrchestradorSave(t *testing.T) {
 			}
 		})
 
-		assert.ErrorIs(t, err, expectedErr)
+		assert.ErrorContains(t, err, "error saving unit mock1: unit1 error")
 
 		assert.ElementsMatch(t, saved, []string{})
 
@@ -153,15 +152,14 @@ func TestOrchestradorSave(t *testing.T) {
 		orchestrator.AddUnit("mock1", mock1)
 		orchestrator.AddUnit("mock2", mock2)
 
-		expectedErr := errors.New("unit1 error")
-		mock1.On("Save", "query", "saved", mock.Anything).Return(expectedErr)
+		mock1.On("Save", "query", "saved", mock.Anything).Return(errors.New("unit1 error"))
 		mock2.On("Save", "query", "saved", mock.Anything).Return(nil)
 
 		saved, err := orchestrator.Save("query", "saved", func(opts *protocols.SaveOptions) {
 			opts.HowWillItSave = protocols.Parallel
 		})
 
-		assert.ErrorIs(t, err, expectedErr)
+		assert.ErrorContains(t, err, "error saving unit mock1: unit1 error")
 
 		assert.ElementsMatch(t, saved, []string{"mock2"})
 

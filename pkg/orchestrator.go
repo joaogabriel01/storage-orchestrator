@@ -57,6 +57,7 @@ func (o *Orchestrator[K, V]) saveInParallel(query K, item V, targets []string, c
 
 			if err := unit.Save(query, item, ctx); err != nil {
 				cancel()
+				err = fmt.Errorf("error saving unit %v: %v", key, err.Error())
 				errCh <- err
 				return
 			}
@@ -93,6 +94,7 @@ func (o *Orchestrator[K, V]) saveInSequence(query K, item V, targets []string, c
 		err := unit.Save(query, item, ctx)
 		if err != nil {
 			cancel()
+			err = fmt.Errorf("error saving unit %v: %v", key, err.Error())
 			return saved, err
 		}
 		saved = append(saved, key)
