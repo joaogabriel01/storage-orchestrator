@@ -15,17 +15,17 @@ func NewUnitMock() *UnitMock {
 	return &UnitMock{}
 }
 
-func (u *UnitMock) Save(query string, item string, ctx context.Context) error {
+func (u *UnitMock) Save(ctx context.Context, query string, item string) error {
 	args := u.Called(query, item, ctx)
 	return args.Error(0)
 }
 
-func (u *UnitMock) Get(query string, ctx context.Context) (string, error) {
+func (u *UnitMock) Get(ctx context.Context, query string) (string, error) {
 	args := u.Called(query, ctx)
 	return args.String(0), args.Error(1)
 }
 
-func (u *UnitMock) Delete(query string, ctx context.Context) error {
+func (u *UnitMock) Delete(ctx context.Context, query string) error {
 	args := u.Called(query, ctx)
 	return args.Error(0)
 }

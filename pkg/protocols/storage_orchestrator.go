@@ -17,10 +17,10 @@ const (
 
 type StorageOrchestrator[K any, V any] interface {
 	Save(query K, item V, opt ...SaveOptionsFunc) ([]string, error)
-	Get(query K, opt ...OptionsFunc) (V, error)
+	Get(query K, opt ...GetOptionsFunc) (V, error)
 	Delete(query K, opt ...OptionsFunc) error
 
-	AddUnit(storage StorageUnit[K, V], storageName string) error
+	AddUnit(storageName string, storage StorageUnit[K, V]) error
 	GetUnits() (map[string]StorageUnit[K, V], error)
 	GetUnit(string) (StorageUnit[K, V], error)
 }
@@ -48,7 +48,7 @@ type Options struct {
 }
 
 type StorageUnit[K any, V any] interface {
-	Save(query K, item V, ctx context.Context) error
-	Get(query K, ctx context.Context) (V, error)
-	Delete(query K, ctx context.Context) error
+	Save(ctx context.Context, query K, item V) error
+	Get(ctx context.Context, query K) (V, error)
+	Delete(ctx context.Context, query K) error
 }

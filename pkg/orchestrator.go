@@ -55,7 +55,7 @@ func (o *Orchestrator[K, V]) saveInParallel(query K, item V, targets []string, c
 				return
 			}
 
-			if err := unit.Save(query, item, ctx); err != nil {
+			if err := unit.Save(ctx, query, item); err != nil {
 				cancel()
 				err = fmt.Errorf("error saving unit %v: %v", key, err.Error())
 				errCh <- err
@@ -91,7 +91,7 @@ func (o *Orchestrator[K, V]) saveInSequence(query K, item V, targets []string, c
 			return saved, ctx.Err()
 		}
 		unit := o.units[key]
-		err := unit.Save(query, item, ctx)
+		err := unit.Save(ctx, query, item)
 		if err != nil {
 			cancel()
 			err = fmt.Errorf("error saving unit %v: %v", key, err.Error())
@@ -122,6 +122,10 @@ func (o *Orchestrator[K, V]) Get(query K, opts ...protocols.GetOptionsFunc) (V, 
 	return object, err
 }
 
+func (o *Orchestrator[K, V]) Delete(query K, opt ...protocols.OptionsFunc) error {
+	return nil
+}
+
 func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Context) (value V, returnErr error) {
 	notExistIn := make([]string, 0)
 
@@ -130,7 +134,7 @@ func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Co
 	}()
 
 	for _, order := range orders {
-		value, returnErr = o.units[order].Get(query, ctx)
+		value, returnErr = o.units[order].Get(ctx, query)
 
 		if returnErr == nil {
 			break
@@ -219,3 +223,5 @@ func NewOrchestrator[K any, V any](units map[string]protocols.StorageUnit[K, V])
 		units: units,
 	}
 }
+
+var _ protocols.StorageOrchestrator[any, any] = (*Orchestrator[any, any])(nil)
