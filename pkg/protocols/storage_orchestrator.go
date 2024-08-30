@@ -19,7 +19,6 @@ type StorageOrchestrator[K any, V any] interface {
 	Save(query K, item V, opt ...SaveOptionsFunc) ([]string, error)
 	Get(query K, opt ...OptionsFunc) (V, error)
 	Delete(query K, opt ...OptionsFunc) error
-	Sync(from string, to []string, opt ...OptionsFunc) error
 
 	AddUnit(storage StorageUnit[K, V], storageName string) error
 	GetUnits() (map[string]StorageUnit[K, V], error)
