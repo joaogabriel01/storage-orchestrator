@@ -26,16 +26,16 @@ func (o *Orchestrator[K, V]) Save(query K, item V, opts ...protocols.SaveOptions
 	// i dont't see other ways of insertion so I didn't use polymorphism
 	switch {
 	case opt.HowWillItSave == protocols.Parallel:
-		saved, err = o.saveInParallel(query, item, opt.Targets, opt.Context)
+		saved, err = o.saveInParallel(opt.Context, query, item, opt.Targets)
 	case opt.HowWillItSave == protocols.Sequential:
-		saved, err = o.saveInSequence(query, item, opt.Targets, opt.Context)
+		saved, err = o.saveInSequence(opt.Context, query, item, opt.Targets)
 	}
 
 	return saved, err
 
 }
 
-func (o *Orchestrator[K, V]) saveInParallel(query K, item V, targets []string, ctx context.Context) ([]string, error) {
+func (o *Orchestrator[K, V]) saveInParallel(ctx context.Context, query K, item V, targets []string) ([]string, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -80,7 +80,7 @@ func (o *Orchestrator[K, V]) saveInParallel(query K, item V, targets []string, c
 	return saved, nil
 }
 
-func (o *Orchestrator[K, V]) saveInSequence(query K, item V, targets []string, ctx context.Context) ([]string, error) {
+func (o *Orchestrator[K, V]) saveInSequence(ctx context.Context, query K, item V, targets []string) ([]string, error) {
 	saved := make([]string, 0, len(o.units))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -115,7 +115,7 @@ func (o *Orchestrator[K, V]) Get(query K, opts ...protocols.GetOptionsFunc) (V, 
 		if len(opt.Targets) < 1 {
 			return object, fmt.Errorf("unspecified order")
 		}
-		object, err = o.getInCache(query, opt.Targets, opt.Context)
+		object, err = o.getInCache(opt.Context, query, opt.Targets)
 	case opt.HowWillItGet == protocols.Race:
 	}
 
@@ -126,7 +126,7 @@ func (o *Orchestrator[K, V]) Delete(query K, opt ...protocols.OptionsFunc) error
 	return nil
 }
 
-func (o *Orchestrator[K, V]) getInCache(query K, orders []string, ctx context.Context) (value V, returnErr error) {
+func (o *Orchestrator[K, V]) getInCache(ctx context.Context, query K, orders []string) (value V, returnErr error) {
 	notExistIn := make([]string, 0)
 
 	defer func() {
