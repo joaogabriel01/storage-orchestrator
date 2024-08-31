@@ -122,7 +122,21 @@ func (o *Orchestrator[K, V]) Get(query K, opts ...protocols.GetOptionsFunc) (V, 
 	return object, err
 }
 
-func (o *Orchestrator[K, V]) Delete(query K, opt ...protocols.OptionsFunc) error {
+func (o *Orchestrator[K, V]) Delete(query K, opts ...protocols.DeleteOptionsFunc) error {
+	opt := o.defaultDeleteOptions()
+	var err error
+	for _, fn := range opts {
+		fn(&opt)
+	}
+
+	for _, key := range opt.Targets {
+		unit := o.units[key]
+		err = unit.Delete(opt.Context, query)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -214,6 +228,15 @@ func (o *Orchestrator[K, V]) defaultGetOptions() protocols.GetOptions {
 		Context:      ctx,
 		HowWillItGet: protocols.Cache,
 		Targets:      []string{},
+	}
+	return options
+}
+
+func (o *Orchestrator[K, V]) defaultDeleteOptions() protocols.DeleteOptions {
+	ctx := context.Background()
+	options := protocols.DeleteOptions{
+		Context: ctx,
+		Targets: []string{},
 	}
 	return options
 }

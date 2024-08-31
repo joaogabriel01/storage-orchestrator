@@ -316,3 +316,32 @@ func TestOrchestratorGet(t *testing.T) {
 		mock2.AssertExpectations(t)
 	})
 }
+
+func TestOrchestratorDelete(t *testing.T) {
+	orchestrator := NewOrchestrator[string, string](map[string]protocols.StorageUnit[string, string]{})
+	t.Run("should reach all storage units when none returns error", func(t *testing.T) {
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		mock1.On("Delete", "query", mock.Anything).Return(nil)
+		mock2.On("Delete", "query", mock.Anything).Return(nil)
+
+		err := orchestrator.Delete("query", func(opt *protocols.DeleteOptions) {
+			opt.Targets = []string{
+				"mock1",
+				"mock2",
+			}
+		})
+
+		assert.NoError(t, err)
+		mock1.AssertNumberOfCalls(t, "Delete", 1)
+		mock2.AssertNumberOfCalls(t, "Delete", 1)
+
+		mock1.AssertExpectations(t)
+		mock2.AssertExpectations(t)
+
+	})
+}
