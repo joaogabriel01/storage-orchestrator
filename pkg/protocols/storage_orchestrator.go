@@ -23,6 +23,8 @@ type StorageOrchestrator[K any, V any] interface {
 	AddUnit(storageName string, storage StorageUnit[K, V]) error
 	GetUnits() (map[string]StorageUnit[K, V], error)
 	GetUnit(string) (StorageUnit[K, V], error)
+
+	SetStandardOrder(targets ...string) error
 }
 
 type SaveOptionsFunc func(*SaveOptions)

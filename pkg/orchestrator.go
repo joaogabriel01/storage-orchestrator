@@ -9,8 +9,9 @@ import (
 )
 
 type Orchestrator[K any, V any] struct {
-	mu    sync.RWMutex
-	units map[string]protocols.StorageUnit[K, V]
+	mu            sync.RWMutex
+	units         map[string]protocols.StorageUnit[K, V]
+	standardOrder []string
 }
 
 func (o *Orchestrator[K, V]) Save(query K, item V, opts ...protocols.SaveOptionsFunc) ([]string, error) {
@@ -206,28 +207,36 @@ func (o *Orchestrator[K, V]) GetUnit(unitName string) (protocols.StorageUnit[K, 
 	return unit, nil
 }
 
+func (o *Orchestrator[K, V]) SetStandardOrder(targets ...string) error {
+	order := make([]string, len(targets))
+	for c, target := range targets {
+		_, ok := o.units[target]
+		if !ok {
+			return fmt.Errorf("this unit does not exist: %v", target)
+		}
+		order[c] = target
+	}
+	o.standardOrder = order
+	return nil
+}
+
 func (o *Orchestrator[K, V]) defaultSaveOptions() protocols.SaveOptions {
 	ctx := context.Background()
 
-	targets := make([]string, 0, len(o.units))
-	for key := range o.units {
-		targets = append(targets, key)
-	}
 	options := protocols.SaveOptions{
 		Context:       ctx,
 		HowWillItSave: protocols.Sequential,
-		Targets:       targets,
+		Targets:       o.standardOrder,
 	}
 	return options
 }
 
 func (o *Orchestrator[K, V]) defaultGetOptions() protocols.GetOptions {
 	ctx := context.Background()
-
 	options := protocols.GetOptions{
 		Context:      ctx,
 		HowWillItGet: protocols.Cache,
-		Targets:      []string{},
+		Targets:      o.standardOrder,
 	}
 	return options
 }
@@ -236,14 +245,15 @@ func (o *Orchestrator[K, V]) defaultDeleteOptions() protocols.DeleteOptions {
 	ctx := context.Background()
 	options := protocols.DeleteOptions{
 		Context: ctx,
-		Targets: []string{},
+		Targets: o.standardOrder,
 	}
 	return options
 }
 
-func NewOrchestrator[K any, V any](units map[string]protocols.StorageUnit[K, V]) Orchestrator[K, V] {
+func NewOrchestrator[K any, V any](units map[string]protocols.StorageUnit[K, V], standardOrder []string) Orchestrator[K, V] {
 	return Orchestrator[K, V]{
-		units: units,
+		units:         units,
+		standardOrder: standardOrder,
 	}
 }
 
