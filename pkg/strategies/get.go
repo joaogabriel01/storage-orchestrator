@@ -34,11 +34,7 @@ func (c *CacheGetStrategy[K, V]) Get(ctx context.Context, query K, units map[str
 		notExistIn = append(notExistIn, target)
 	}
 
-	if len(notExistIn) > 0 {
-		return value, fmt.Errorf("not found in any unit")
-	}
-
-	return value, fmt.Errorf("no unit returned a value")
+	return value, returnErr
 }
 
 func (c *CacheGetStrategy[K, V]) addMissingElements(ctx context.Context, query K, value V, orders []string, units map[string]protocols.StorageUnit[K, V], missing []string, saveFunction protocols.SaveStrategy[K, V]) error {
@@ -56,3 +52,5 @@ func (c *CacheGetStrategy[K, V]) addMissingElements(ctx context.Context, query K
 	}
 	return nil
 }
+
+var _ protocols.GetStrategy[any, any] = (*CacheGetStrategy[any, any])(nil)

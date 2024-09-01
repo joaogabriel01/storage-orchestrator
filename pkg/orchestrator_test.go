@@ -1,37 +1,52 @@
 package pkg
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/joaogabriel01/storage-orchestrator/pkg/protocols"
-	"github.com/joaogabriel01/storage-orchestrator/pkg/test"
+	strategies_mock "github.com/joaogabriel01/storage-orchestrator/pkg/strategies/test"
+	unit_test "github.com/joaogabriel01/storage-orchestrator/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func setupOrchestrator() Orchestrator[string, string] {
-	return NewOrchestrator[string, string](map[string]protocols.StorageUnit[string, string]{}, []string{})
-
-}
-
 var orchestrator Orchestrator[string, string]
+var mock1 *unit_test.UnitMock
+var mock2 *unit_test.UnitMock
+var saveStrategy strategies_mock.MockSaveStrategy
+var getStrategy strategies_mock.MockGetStrategy
+var deleteStrategy strategies_mock.MockDeleteStrategy
 
-func setup() {
-	orchestrator = setupOrchestrator()
+func setupOrchestrator() {
+	units := make(map[string]protocols.StorageUnit[string, string])
+	mock1 = unit_test.NewUnitMock()
+	mock2 = unit_test.NewUnitMock()
+
+	standardOrder := make([]string, 0)
+	standardOrder = append(standardOrder, "mock1", "mock2")
+
+	saveStrategy = strategies_mock.MockSaveStrategy{}
+	getStrategy = strategies_mock.MockGetStrategy{}
+	deleteStrategy = strategies_mock.MockDeleteStrategy{}
+
+	var saveStrategiesTyped []protocols.SaveStrategy[string, string]
+	var getStrategiesTyped []protocols.GetStrategy[string, string]
+	var deleteStrategiesTyped []protocols.DeleteStrategy[string, string]
+
+	saveStrategiesTyped = append(saveStrategiesTyped, &saveStrategy)
+	getStrategiesTyped = append(getStrategiesTyped, &getStrategy)
+	deleteStrategiesTyped = append(deleteStrategiesTyped, &deleteStrategy)
+
+	orchestrator = NewOrchestratorWithParameters[string, string](units, standardOrder, saveStrategiesTyped, getStrategiesTyped, deleteStrategiesTyped)
+
+	orchestrator.AddUnit("mock1", mock1)
+	orchestrator.AddUnit("mock2", mock2)
 }
 
 func TestOrchestratorUnitOperations(t *testing.T) {
 
-	t.Run("it makes the storage unit operations", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
+	t.Run("should add and get units without error", func(t *testing.T) {
+		setupOrchestrator()
 
 		mocks, err := orchestrator.GetUnits()
 		assert.NoError(t, err)
@@ -50,374 +65,81 @@ func TestOrchestratorUnitOperations(t *testing.T) {
 	})
 
 	t.Run("should save standard order without error", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-		err := orchestrator.SetStandardOrder("mock1", "mock2")
+		setupOrchestrator()
+		err := orchestrator.SetStandardOrder("mock2")
 		assert.NoError(t, err)
 	})
 
 	t.Run("should return error when there are no units", func(t *testing.T) {
-		setup()
-
-		mock1 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		err := orchestrator.SetStandardOrder("mock1", "mock2")
-		assert.ErrorContains(t, err, "this unit does not exist: mock2")
+		setupOrchestrator()
+		err := orchestrator.SetStandardOrder("mock1", "mock2", "mock3")
+		assert.ErrorContains(t, err, "this unit does not exist: mock3")
 
 	})
 }
 
-func TestOrchestradorSave(t *testing.T) {
+func TestOrchestratorStrategies(t *testing.T) {
 
-	t.Run("it saves an item with success - sequential mode", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		mock1.On("Save", "query", "saved", mock.Anything).Return(nil)
-		mock2.On("Save", "query", "saved", mock.Anything).Return(nil)
-
-		orchestrator.SetStandardOrder("mock1", "mock2")
-		saved, err := orchestrator.Save("query", "saved")
+	t.Run("should call save strategy without opt func", func(t *testing.T) {
+		setupOrchestrator()
+		saveStrategy.On("Save", mock.Anything, "query", "value", orchestrator.units, []string{"mock1", "mock2"}, mock.Anything).Return([]string{"mock1", "mock2"}, nil)
+		saved, err := orchestrator.Save("query", "value")
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, saved, []string{"mock1", "mock2"})
+		assert.Equal(t, []string{"mock1", "mock2"}, saved)
+		saveStrategy.AssertExpectations(t)
 
-		mock1.AssertExpectations(t)
-		mock2.AssertExpectations(t)
 	})
-
-	t.Run("it saves an item with success in just one mock - sequential mode", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		mock2.On("Save", "query", "saved", mock.Anything).Return(nil)
-
-		saved, err := orchestrator.Save("query", "saved", func(opts *protocols.SaveOptions) {
-			opts.Targets = []string{"mock2"}
+	t.Run("should call save strategy with opt func", func(t *testing.T) {
+		setupOrchestrator()
+		saveStrategy.On("Save", mock.Anything, "query", "value", orchestrator.units, []string{"mock1"}, mock.Anything).Return([]string{"mock1"}, nil)
+		saved, err := orchestrator.Save("query", "value", func(opt *protocols.SaveOptions) {
+			opt.Targets = []string{"mock1"}
 		})
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, saved, []string{"mock2"})
+		assert.Equal(t, []string{"mock1"}, saved)
+		saveStrategy.AssertExpectations(t)
 
-		mock1.AssertNotCalled(t, "Save")
-		mock2.AssertExpectations(t)
 	})
 
-	t.Run("it saves an item with success - parallel mode", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		mock1.On("Save", "query", "saved", mock.Anything).Return(nil)
-		mock2.On("Save", "query", "saved", mock.Anything).Return(nil)
-		orchestrator.SetStandardOrder("mock1", "mock2")
-
-		saved, err := orchestrator.Save("query", "saved", func(opts *protocols.SaveOptions) {
-			opts.HowWillItSave = protocols.Parallel
-		})
+	t.Run("should call get strategy without opt func", func(t *testing.T) {
+		setupOrchestrator()
+		getStrategy.On("Get", mock.Anything, "query", orchestrator.units, []string{"mock1", "mock2"}, mock.Anything).Return("value", nil)
+		value, err := orchestrator.Get("query")
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, saved, []string{"mock1", "mock2"})
-
-		mock1.AssertExpectations(t)
-		mock2.AssertExpectations(t)
-	})
-
-	t.Run("it saves an item with success in just one mock - parallel mode", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		mock1.On("Save", "query", "saved", mock.Anything).Return(nil)
-		mock2.On("Save", "query", "saved", mock.Anything).Return(nil)
-
-		saved, err := orchestrator.Save("query", "saved", func(opts *protocols.SaveOptions) {
-			opts.HowWillItSave = protocols.Parallel
-			opts.Targets = []string{"mock2"}
-		})
-		assert.NoError(t, err)
-		assert.ElementsMatch(t, saved, []string{"mock2"})
-
-		mock1.AssertNotCalled(t, "Save")
-		mock2.AssertExpectations(t)
-	})
-
-	t.Run("it saves an item with unit error - sequential mode", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		mock1.On("Save", "query", "saved", mock.Anything).Return(errors.New("unit1 error"))
-		mock2.On("Save", "query", "saved", mock.Anything).Return(nil)
-
-		saved, err := orchestrator.Save("query", "saved", func(opts *protocols.SaveOptions) {
-			opts.HowWillItSave = protocols.Sequential
-			opts.Targets = []string{
-				"mock1",
-				"mock2",
-			}
-		})
-
-		assert.ErrorContains(t, err, "error saving unit mock1: unit1 error")
-
-		assert.ElementsMatch(t, saved, []string{})
-
-		mock1.AssertExpectations(t)
-	})
-
-	t.Run("it saves an item with unit error - parallel mode", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-		orchestrator.SetStandardOrder("mock1", "mock2")
-
-		mock1.On("Save", "query", "saved", mock.Anything).Return(errors.New("unit1 error"))
-		mock2.On("Save", "query", "saved", mock.Anything).Return(nil)
-
-		saved, err := orchestrator.Save("query", "saved", func(opts *protocols.SaveOptions) {
-			opts.HowWillItSave = protocols.Parallel
-		})
-
-		assert.ErrorContains(t, err, "error saving unit mock1: unit1 error")
-
-		assert.ElementsMatch(t, saved, []string{"mock2"})
-
-		mock1.AssertExpectations(t)
-	})
-
-	t.Run("it saves an item with context error - sequential mode", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-		orchestrator.SetStandardOrder("mock1", "mock2")
-
-		saved, err := orchestrator.Save("query", "saved", func(opts *protocols.SaveOptions) {
-			ctx, cancel := context.WithCancel(context.Background())
-			opts.Context = ctx
-			cancel()
-		})
-
-		assert.ErrorIs(t, err, context.Canceled)
-
-		assert.ElementsMatch(t, saved, []string{})
-
-	})
-
-	t.Run("it saves an item with context error - parallel mode", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-		orchestrator.SetStandardOrder("mock1", "mock2")
-
-		saved, err := orchestrator.Save("query", "saved", func(opts *protocols.SaveOptions) {
-			ctx, cancel := context.WithCancel(context.Background())
-			opts.Context = ctx
-			cancel()
-
-			opts.HowWillItSave = protocols.Parallel
-		})
-
-		assert.ErrorIs(t, err, context.Canceled)
-
-		assert.ElementsMatch(t, saved, []string{})
-
-	})
-
-}
-
-func TestOrchestratorGet(t *testing.T) {
-
-	t.Run("it receives an error when trying to get a Cache item without passing order", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		_, err := orchestrator.Get("caughtTest")
-
-		assert.Errorf(t, err, "unspecified order")
-
-	})
-
-	t.Run("it receives a valid value from the first unit when passed order and is of cache type", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		expectedValue := "worked"
-		mock1.On("Get", "caughtTest", mock.Anything).Return(expectedValue, nil)
-
-		value, err := orchestrator.Get("caughtTest", func(opts *protocols.GetOptions) {
-			opts.Targets = []string{"mock1", "mock2"}
-		})
-
-		assert.NoError(t, err)
-		assert.Equal(t, expectedValue, value)
-
-		mock1.AssertExpectations(t)
-	})
-
-	t.Run("it receives a valid value from the second unit when passed order and is of cache type", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		expectedValue := "worked"
-		mock1.On("Save", "caughtTest", "worked", mock.Anything).Return(nil)
-		mock1.On("Get", "caughtTest", mock.Anything).Return("", fmt.Errorf("value not found"))
-
-		mock2.On("Get", "caughtTest", mock.Anything).Return(expectedValue, nil)
-
-		value, err := orchestrator.Get("caughtTest", func(opts *protocols.GetOptions) {
-			opts.Targets = []string{"mock1", "mock2"}
-		})
-
-		assert.Equal(t, expectedValue, value)
-		assert.NoError(t, err)
-
-		mock1.AssertExpectations(t)
-		mock2.AssertExpectations(t)
-	})
-
-	t.Run("it doesn't execute the save method of the unit when none has data", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		expectedValue := ""
-		expectedErr := "no unit returned"
-
-		mock1.On("Get", "caughtTest", mock.Anything).Return("", fmt.Errorf("value not found"))
-
-		mock2.On("Get", "caughtTest", mock.Anything).Return("", fmt.Errorf("value not found"))
-
-		value, err := orchestrator.Get("caughtTest", func(opts *protocols.GetOptions) {
-			opts.Targets = []string{"mock1", "mock2"}
-		})
-
-		assert.Equal(t, expectedValue, value)
-		assert.ErrorContains(t, err, expectedErr)
-
-		mock1.AssertExpectations(t)
-		mock2.AssertExpectations(t)
-	})
-
-	t.Run("should return an unit error when it doesn't have it in the first caches and it gives an error when saving", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		mock1.On("Get", "caughtTest", mock.Anything).Return("", fmt.Errorf("value not found"))
-		mock1.On("Save", "caughtTest", "value", mock.Anything).Return(fmt.Errorf("didnt'save mock1"))
-
-		mock2.On("Get", "caughtTest", mock.Anything).Return("value", nil)
-
-		value, err := orchestrator.Get("caughtTest", func(opts *protocols.GetOptions) {
-			opts.Targets = []string{"mock1", "mock2"}
-		})
-
 		assert.Equal(t, "value", value)
-		assert.ErrorContains(t, err, "didnt'save mock1")
-
-		mock1.AssertExpectations(t)
-		mock2.AssertExpectations(t)
+		getStrategy.AssertExpectations(t)
 	})
-}
 
-func TestOrchestratorDelete(t *testing.T) {
-
-	t.Run("should reach all storage units when none returns error", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
-
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		mock1.On("Delete", "query", mock.Anything).Return(nil)
-		mock2.On("Delete", "query", mock.Anything).Return(nil)
-
-		err := orchestrator.Delete("query", func(opt *protocols.DeleteOptions) {
-			opt.Targets = []string{
-				"mock1",
-				"mock2",
-			}
+	t.Run("should call get strategy with opt func", func(t *testing.T) {
+		setupOrchestrator()
+		getStrategy.On("Get", mock.Anything, "query", orchestrator.units, []string{"mock1"}, mock.Anything).Return("value", nil)
+		value, err := orchestrator.Get("query", func(opt *protocols.GetOptions) {
+			opt.Targets = []string{"mock1"}
 		})
-
 		assert.NoError(t, err)
-		mock1.AssertNumberOfCalls(t, "Delete", 1)
-		mock2.AssertNumberOfCalls(t, "Delete", 1)
+		assert.Equal(t, "value", value)
+		getStrategy.AssertExpectations(t)
+	})
 
-		mock1.AssertExpectations(t)
-		mock2.AssertExpectations(t)
+	t.Run("should call delete strategy without opt func", func(t *testing.T) {
+		setupOrchestrator()
+
+		deleteStrategy.On("Delete", mock.Anything, "query", orchestrator.units, []string{"mock1", "mock2"}, mock.Anything).Return(nil)
+		err := orchestrator.Delete("query")
+		assert.NoError(t, err)
+		deleteStrategy.AssertExpectations(t)
 
 	})
 
-	t.Run("should return error when one unit return errors too", func(t *testing.T) {
-		setup()
-		mock1 := test.NewUnitMock()
-		mock2 := test.NewUnitMock()
+	t.Run("should call delete strategy with opt func", func(t *testing.T) {
+		setupOrchestrator()
 
-		orchestrator.AddUnit("mock1", mock1)
-		orchestrator.AddUnit("mock2", mock2)
-
-		mock1.On("Delete", "query", mock.Anything).Return(fmt.Errorf("test"))
-
+		deleteStrategy.On("Delete", mock.Anything, "query", orchestrator.units, []string{"mock1"}, mock.Anything).Return(nil)
 		err := orchestrator.Delete("query", func(opt *protocols.DeleteOptions) {
-			opt.Targets = []string{
-				"mock1",
-				"mock2",
-			}
+			opt.Targets = []string{"mock1"}
 		})
-
-		assert.ErrorContains(t, err, "test")
-		mock1.AssertNumberOfCalls(t, "Delete", 1)
-		mock2.AssertNumberOfCalls(t, "Delete", 0)
-
-		mock1.AssertExpectations(t)
-		mock2.AssertExpectations(t)
+		assert.NoError(t, err)
+		deleteStrategy.AssertExpectations(t)
 
 	})
 }

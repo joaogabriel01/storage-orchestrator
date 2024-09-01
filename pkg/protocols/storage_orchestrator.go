@@ -71,5 +71,5 @@ type GetStrategy[K any, V any] interface {
 }
 
 type DeleteStrategy[K any, V any] interface {
-	Delete(ctx context.Context, query K, units map[string]StorageUnit[K, V], targets []string) error
+	Delete(ctx context.Context, query K, units map[string]StorageUnit[K, V], targets []string, auxiliary ...any) error
 }

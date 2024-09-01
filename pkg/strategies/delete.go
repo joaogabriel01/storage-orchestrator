@@ -9,7 +9,7 @@ import (
 
 type SequentialDeleteStrategy[K any, V any] struct{}
 
-func (s *SequentialDeleteStrategy[K, V]) Delete(ctx context.Context, query K, units map[string]protocols.StorageUnit[K, V], targets []string) error {
+func (s *SequentialDeleteStrategy[K, V]) Delete(ctx context.Context, query K, units map[string]protocols.StorageUnit[K, V], targets []string, _ ...any) error {
 	for _, key := range targets {
 		unit := units[key]
 		err := unit.Delete(ctx, query)
@@ -19,3 +19,5 @@ func (s *SequentialDeleteStrategy[K, V]) Delete(ctx context.Context, query K, un
 	}
 	return nil
 }
+
+var _ protocols.DeleteStrategy[any, any] = (*SequentialDeleteStrategy[any, any])(nil)

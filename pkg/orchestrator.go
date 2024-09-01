@@ -111,4 +111,14 @@ func NewOrchestrator[K any, V any](units map[string]protocols.StorageUnit[K, V],
 	}
 }
 
+func NewOrchestratorWithParameters[K any, V any](units map[string]protocols.StorageUnit[K, V], standardOrder []string, saveStrategies []protocols.SaveStrategy[K, V], getStrategies []protocols.GetStrategy[K, V], deleteStrategies []protocols.DeleteStrategy[K, V]) Orchestrator[K, V] {
+	return Orchestrator[K, V]{
+		units:            units,
+		standardOrder:    standardOrder,
+		saveStrategies:   saveStrategies,
+		getStrategies:    getStrategies,
+		deleteStrategies: deleteStrategies,
+	}
+}
+
 var _ protocols.StorageOrchestrator[any, any] = (*Orchestrator[any, any])(nil)

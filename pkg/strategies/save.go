@@ -32,6 +32,8 @@ func (s *SequentialSaveStrategy[K, V]) Save(ctx context.Context, query K, item V
 	return saved, nil
 }
 
+var _ protocols.SaveStrategy[any, any] = (*SequentialSaveStrategy[any, any])(nil)
+
 type ParallelSaveStrategy[K any, V any] struct{}
 
 func (p *ParallelSaveStrategy[K, V]) Save(ctx context.Context, query K, item V, units map[string]protocols.StorageUnit[K, V], targets []string, _ ...any) ([]string, error) {
@@ -78,3 +80,5 @@ func (p *ParallelSaveStrategy[K, V]) Save(ctx context.Context, query K, item V, 
 
 	return saved, nil
 }
+
+var _ protocols.SaveStrategy[any, any] = (*ParallelSaveStrategy[any, any])(nil)
