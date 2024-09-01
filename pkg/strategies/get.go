@@ -18,7 +18,7 @@ func (c *CacheGetStrategy[K, V]) Get(ctx context.Context, query K, units map[str
 
 	saveFunction, ok := auxiliary[0].(protocols.SaveStrategy[K, V])
 	if !ok {
-		return value, fmt.Errorf("save function not found")
+		return value, fmt.Errorf("save function check did not work")
 	}
 
 	defer func() {

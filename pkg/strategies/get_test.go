@@ -37,7 +37,7 @@ func TestGet(t *testing.T) {
 
 		_, err := cacheGetStrategy.Get(ctx, "query", units, targets, "not the correct type")
 
-		assert.ErrorContains(t, err, "save function not found")
+		assert.ErrorContains(t, err, "save function check did not work")
 
 	})
 
