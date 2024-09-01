@@ -284,8 +284,8 @@ func TestOrchestratorGet(t *testing.T) {
 			opts.Targets = []string{"mock1", "mock2"}
 		})
 
-		assert.Equal(t, expectedValue, value)
 		assert.NoError(t, err)
+		assert.Equal(t, expectedValue, value)
 
 		mock1.AssertExpectations(t)
 	})
@@ -389,6 +389,32 @@ func TestOrchestratorDelete(t *testing.T) {
 		assert.NoError(t, err)
 		mock1.AssertNumberOfCalls(t, "Delete", 1)
 		mock2.AssertNumberOfCalls(t, "Delete", 1)
+
+		mock1.AssertExpectations(t)
+		mock2.AssertExpectations(t)
+
+	})
+
+	t.Run("should return error when one unit return errors too", func(t *testing.T) {
+		setup()
+		mock1 := test.NewUnitMock()
+		mock2 := test.NewUnitMock()
+
+		orchestrator.AddUnit("mock1", mock1)
+		orchestrator.AddUnit("mock2", mock2)
+
+		mock1.On("Delete", "query", mock.Anything).Return(fmt.Errorf("test"))
+
+		err := orchestrator.Delete("query", func(opt *protocols.DeleteOptions) {
+			opt.Targets = []string{
+				"mock1",
+				"mock2",
+			}
+		})
+
+		assert.ErrorContains(t, err, "test")
+		mock1.AssertNumberOfCalls(t, "Delete", 1)
+		mock2.AssertNumberOfCalls(t, "Delete", 0)
 
 		mock1.AssertExpectations(t)
 		mock2.AssertExpectations(t)

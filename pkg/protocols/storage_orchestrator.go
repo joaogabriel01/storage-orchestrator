@@ -4,10 +4,15 @@ import "context"
 
 type TypeGetOptions uint
 type TypeSaveOptions uint
+type TypeDeleteOptions uint
 
 const (
 	Sequential TypeSaveOptions = iota
 	Parallel
+)
+
+const (
+	SequentialDelete TypeDeleteOptions = iota
 )
 
 const (
@@ -46,12 +51,25 @@ type GetOptions struct {
 }
 
 type DeleteOptions struct {
-	Context context.Context
-	Targets []string
+	Context         context.Context
+	Targets         []string
+	HowWillItDelete TypeDeleteOptions
 }
 
 type StorageUnit[K any, V any] interface {
 	Save(ctx context.Context, query K, item V) error
 	Get(ctx context.Context, query K) (V, error)
 	Delete(ctx context.Context, query K) error
+}
+
+type SaveStrategy[K any, V any] interface {
+	Save(ctx context.Context, query K, item V, units map[string]StorageUnit[K, V], targets []string, auxiliary ...any) ([]string, error)
+}
+
+type GetStrategy[K any, V any] interface {
+	Get(ctx context.Context, query K, units map[string]StorageUnit[K, V], targets []string, auxiliary ...any) (V, error)
+}
+
+type DeleteStrategy[K any, V any] interface {
+	Delete(ctx context.Context, query K, units map[string]StorageUnit[K, V], targets []string) error
 }
