@@ -22,9 +22,7 @@ func setupOrchestrator() {
 	mock1 = unit_test.NewUnitMock()
 	mock2 = unit_test.NewUnitMock()
 
-	standardOrder := make([]string, 0)
-	standardOrder = append(standardOrder, "mock1", "mock2")
-
+	standardOrder := []string{"mock1", "mock2"}
 	saveStrategy = strategies_mock.MockSaveStrategy{}
 	getStrategy = strategies_mock.MockGetStrategy{}
 	deleteStrategy = strategies_mock.MockDeleteStrategy{}
