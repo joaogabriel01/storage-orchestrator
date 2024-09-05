@@ -69,3 +69,5 @@ Discuss the method to set a default, global order, explaining its utility and ap
 ## Example Usage
 
 Direct users to the `examples` directory for practical illustrations and scenarios. Explain that this section is designed to enhance understanding through real-world application examples.
+
+Hello Jão
